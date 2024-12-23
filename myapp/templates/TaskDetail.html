@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="col-4 offset-3">
+    <h1>Task Creation Page</h1>
+    <form action="" method="post">
+        {% csrf_token %}
+            {{ form.as_p }}
+        <br>
+        <button type="submit" class="btn btn-secondary">Submit</button>
+    </form>
+</div>
+{% endblock content %}

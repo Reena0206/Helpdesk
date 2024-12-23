@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <!-- User Profile Section -->
+        <div class="col-md-6">
+            <div class="card">
+                <h2 class="card-header">User Profile</h2>
+                <div class="card-body">
+                    {% if ProfileDatas %}
+                        {% for ProfileData in ProfileDatas %}
+                            <h5 class="card-title">Hello, {{ request.user.first_name }}</h5>
+                            <p class="card-text"><strong>First Name:</strong> {{ request.user.first_name }}</p>
+                            <p class="card-text"><strong>Last Name:</strong> {{ request.user.last_name }}</p>
+                            <p class="card-text"><strong>Username:</strong> {{ request.user.username }}</p>
+                            <p class="card-text"><strong>Email:</strong> {{ request.user.email }}</p>
+                            <p class="card-text"><strong>Address:</strong> {{ ProfileData.Address }}</p>
+                            <p class="card-text"><strong>City:</strong> {{ ProfileData.City }}</p>
+                            <p class="card-text"><strong>State:</strong> {{ ProfileData.State }}</p>
+
+                            <!-- Show Edit Profile button for both normal users and superusers -->
+                            {% if request.user.is_superuser or request.user == ProfileData.user %}
+                                <a href="{% url 'update_profile' ProfileData.id %}" class="btn btn-primary">Edit Profile</a>
+                            {% endif %}
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-danger">No profile data available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Details Section -->
+        <div class="col-md-6">
+            <div class="card">
+                <h2 class="card-header">Account Details</h2>
+                <div class="card-body">
+                    {% if AccountDatas %}
+                        {% for AccountData in AccountDatas %}
+                            <p class="card-text"><strong>Account Holder:</strong> {{ AccountData.account_holder.username }}</p>
+                            <p class="card-text"><strong>Account Balance:</strong> ${{ AccountData.account_balance }}</p>
+                            <a href="{% url 'transactions'%}" class="btn btn-primary">Show Transaction</a>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-danger">No account details available.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock content %}
