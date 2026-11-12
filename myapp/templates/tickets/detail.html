@@ -1,0 +1,261 @@
+{% extends 'base.html' %}
+{% load helpdesk humanize %}
+{% block title %}{{ ticket.number }} · {{ ticket.title }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Home</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'ticket_list' %}">Tickets</a></li>
+  <li class="breadcrumb-item active">{{ ticket.number }}</li>
+</ol></nav>
+
+<!-- Header -->
+<div class="page-header align-items-start">
+  <div style="min-width: 0">
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+      <span class="ticket-num">{{ ticket.number }}</span>
+      {% status_chip ticket %}
+      {% priority_chip ticket %}
+      {% if ticket.category %}<span class="chip chip-neutral"><i class="bi bi-tag"></i>{{ ticket.category }}</span>{% endif %}
+      {% if ticket.is_overdue %}<span class="chip chip-overdue"><i class="bi bi-alarm"></i>Overdue</span>{% endif %}
+      {% if ticket.reward %}<span class="chip chip-coin"><i class="bi bi-coin"></i>{{ ticket.reward }} coin reward</span>{% endif %}
+    </div>
+    <h1 class="text-break">{{ ticket.title }}</h1>
+    <p class="subtitle small">Raised by <strong class="text-body">{{ ticket.created_by|display_name }}</strong> · {{ ticket.created_at|naturaltime }} · updated {{ ticket.updated_at|naturaltime }}</p>
+  </div>
+  {% if can_edit or can_delete %}
+    <div class="d-flex gap-2">
+      {% if can_edit %}<a href="{% url 'ticket_edit' ticket.pk %}" class="btn btn-light-subtle"><i class="bi bi-pencil"></i> Edit</a>{% endif %}
+      {% if can_delete %}<a href="{% url 'ticket_delete' ticket.pk %}" class="btn btn-light-subtle text-danger" title="Delete ticket"><i class="bi bi-trash3"></i></a>{% endif %}
+    </div>
+  {% endif %}
+</div>
+
+<!-- Progress -->
+<div class="card mb-4">
+  <div class="card-body py-3">
+    <ol class="stepper">
+      <li class="{% if ticket.stage > 0 %}done{% else %}current{% endif %}">Raised</li>
+      <li class="{% if ticket.stage > 1 %}done{% elif ticket.stage == 1 %}{% if ticket.status == 'on_hold' or ticket.status == 'reopened' %}warn{% else %}current{% endif %}{% endif %}">
+        {% if ticket.status == 'on_hold' %}On hold{% elif ticket.status == 'reopened' %}Reopened{% else %}In progress{% endif %}
+      </li>
+      <li class="{% if ticket.stage > 2 %}done{% elif ticket.stage == 2 %}current{% endif %}">Resolved</li>
+      <li class="{% if ticket.stage == 3 %}done{% endif %}">Closed</li>
+    </ol>
+  </div>
+</div>
+
+{% if 'close' in actions and user == ticket.created_by %}
+  <div class="callout tone-success mb-4">
+    <span class="callout-icon"><i class="bi bi-patch-check"></i></span>
+    <div class="flex-grow-1">
+      <strong>Your ticket has been resolved. Is the problem fixed?</strong>
+      <div class="small text-muted">Confirm and close it{% if ticket.reward %} (this pays the {{ ticket.reward }}-coin reward to {{ ticket.assigned_to|display_name }}){% endif %}, or reopen it if it still isn't working.</div>
+    </div>
+    <a href="#actions" class="btn btn-success btn-sm">Respond <i class="bi bi-arrow-down"></i></a>
+  </div>
+{% endif %}
+
+<div class="ticket-layout{% if not actions %} no-actions{% endif %}">
+  <!-- Conversation -->
+  <div class="tl-main">
+    <div class="thread mb-4">
+      <!-- Original request -->
+      <div class="msg">
+        {% avatar ticket.created_by %}
+        <div class="msg-body">
+          <div class="msg-head"><strong>{{ ticket.created_by|display_name }}</strong><span class="role-tag">Requester</span><span class="text-muted" title="{{ ticket.created_at }}">{{ ticket.created_at|naturaltime }}</span></div>
+          <div class="msg-bubble">{{ ticket.description }}{% if ticket.attachment %}
+<a href="{{ ticket.attachment.url }}" target="_blank" class="attachment"><i class="bi bi-paperclip"></i>{{ ticket.attachment_name }}</a>{% endif %}</div>
+        </div>
+      </div>
+
+      {% for c in comments %}
+        {% with staff=c.author.profile.is_staff_member %}
+        <div class="msg {% if c.is_internal %}msg-internal{% elif staff and c.author != ticket.created_by %}msg-staff{% endif %}">
+          {% avatar c.author %}
+          <div class="msg-body">
+            <div class="msg-head">
+              <strong>{{ c.author|display_name }}</strong>
+              {% if c.author == ticket.created_by %}<span class="role-tag">Requester</span>
+              {% elif c.author == ticket.assigned_to %}<span class="role-tag staff">Assignee</span>
+              {% elif staff %}<span class="role-tag staff">Support</span>{% endif %}
+              {% if c.is_internal %}<span class="role-tag note"><i class="bi bi-lock-fill"></i> Internal note</span>{% endif %}
+              <span class="text-muted" title="{{ c.created_at }}">{{ c.created_at|naturaltime }}</span>
+            </div>
+            <div class="msg-bubble">{{ c.body }}{% if c.attachment %}
+<a href="{{ c.attachment.url }}" target="_blank" class="attachment"><i class="bi bi-paperclip"></i>{{ c.attachment_name }}</a>{% endif %}</div>
+          </div>
+        </div>
+        {% endwith %}
+      {% endfor %}
+
+      {% if ticket.resolution %}
+        <div class="msg msg-resolution">
+          <span class="avatar" style="--avatar-bg:#12b76a"><i class="bi bi-check-lg"></i></span>
+          <div class="msg-body">
+            <div class="msg-head"><strong>Resolution</strong>{% if ticket.assigned_to %}<span class="text-muted">by {{ ticket.assigned_to|display_name }}</span>{% endif %}{% if ticket.resolved_at %}<span class="text-muted">· {{ ticket.resolved_at|naturaltime }}</span>{% endif %}</div>
+            <div class="msg-bubble">{{ ticket.resolution }}</div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if ticket.status == 'closed' %}
+        <div class="msg">
+          <span class="avatar" style="--avatar-bg:#64748b"><i class="bi bi-lock"></i></span>
+          <div class="msg-body">
+            <div class="msg-head"><strong>Ticket closed</strong>{% if ticket.closed_at %}<span class="text-muted">{{ ticket.closed_at|naturaltime }}</span>{% endif %}</div>
+            <div class="msg-bubble msg-system">
+              {% if ticket.rating %}<div class="mb-1">{{ ticket.rating|stars }} <span class="small text-muted ms-1">{{ ticket.rating }}/5</span></div>{% endif %}
+              {% if ticket.feedback %}<em>“{{ ticket.feedback }}”</em>{% elif not ticket.rating %}<span class="text-muted">Closed without a rating.</span>{% endif %}
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Composer -->
+    <div id="conversation"></div>
+    {% if can_comment %}
+      <form method="post" action="{% url 'ticket_comment' ticket.pk %}" enctype="multipart/form-data" class="composer">
+        {% csrf_token %}
+        <label for="{{ comment_form.body.id_for_label }}" class="visually-hidden">Reply</label>
+        {{ comment_form.body }}
+        <div class="composer-bar">
+          <label class="btn btn-sm btn-light-subtle mb-0" title="Attach a file">
+            <i class="bi bi-paperclip"></i> <span id="comment-file-label">Attach file</span>
+            <input type="file" name="attachment" class="d-none" data-file-label="comment-file-label">
+          </label>
+          {% if comment_form.is_internal %}
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="checkbox" name="is_internal" id="id_is_internal">
+              <label class="form-check-label small" for="id_is_internal"><i class="bi bi-lock"></i> Internal note (staff only)</label>
+            </div>
+          {% endif %}
+          <button type="submit" class="btn btn-primary btn-sm ms-auto"><i class="bi bi-send"></i> Send</button>
+        </div>
+      </form>
+    {% else %}
+      <div class="text-center text-muted small p-3 border rounded-3"><i class="bi bi-lock"></i> This ticket is closed. <a href="{% url 'ticket_create' %}">Raise a new ticket</a> if you need more help.</div>
+    {% endif %}
+  </div>
+
+  <!-- Actions: first on phones, top-right on desktop -->
+  {% if actions %}
+  <div class="tl-actions">
+      <div class="card" id="actions">
+        <div class="card-header"><span class="card-title"><i class="bi bi-lightning text-primary"></i> Actions</span></div>
+        <div class="card-body d-grid gap-2 action-panel">
+          {% if 'take' in actions %}
+            <form method="post" action="{% url 'ticket_action' ticket.pk 'take' %}">{% csrf_token %}
+              <button class="btn btn-primary w-100"><i class="bi bi-hand-index-thumb"></i> Take this ticket</button>
+            </form>
+          {% endif %}
+
+          {% if 'close' in actions %}
+            <div class="action-form">
+              <form method="post" action="{% url 'ticket_action' ticket.pk 'close' %}">{% csrf_token %}
+                <div class="fw-semibold small mb-1">How did we do?</div>
+                <div class="rating-input mb-2" role="radiogroup" aria-label="Rating">
+                  {% for i in "54321" %}
+                    <input type="radio" name="rating" value="{{ i }}" id="rate{{ i }}">
+                    <label for="rate{{ i }}" title="{{ i }} star{{ i|pluralize }}"><i class="bi bi-star-fill"></i></label>
+                  {% endfor %}
+                </div>
+                <textarea name="feedback" class="form-control form-control-sm mb-2" rows="2" placeholder="Any feedback? (optional)"></textarea>
+                <button class="btn btn-success w-100"><i class="bi bi-check2-all"></i> Confirm fix &amp; close</button>
+              </form>
+            </div>
+          {% endif %}
+
+          {% if 'reopen' in actions %}
+            <button class="btn btn-light-subtle text-danger" type="button" data-bs-toggle="collapse" data-bs-target="#reopenBox" aria-expanded="false"><i class="bi bi-arrow-counterclockwise"></i> Not fixed? Reopen</button>
+            <div class="collapse" id="reopenBox">
+              <form method="post" action="{% url 'ticket_action' ticket.pk 'reopen' %}" class="action-form">{% csrf_token %}
+                <textarea name="reason" class="form-control form-control-sm mb-2" rows="3" required placeholder="What is still not working?"></textarea>
+                <button class="btn btn-danger btn-sm w-100">Reopen ticket</button>
+              </form>
+            </div>
+          {% endif %}
+
+          {% if 'resume' in actions %}
+            <form method="post" action="{% url 'ticket_action' ticket.pk 'resume' %}">{% csrf_token %}
+              <button class="btn btn-primary w-100"><i class="bi bi-play-fill"></i> Resume work</button>
+            </form>
+          {% endif %}
+
+          {% if 'resolve' in actions %}
+            <button class="btn btn-success" type="button" data-bs-toggle="collapse" data-bs-target="#resolveBox" aria-expanded="false"><i class="bi bi-check2-circle"></i> Resolve ticket</button>
+            <div class="collapse" id="resolveBox">
+              <form method="post" action="{% url 'ticket_action' ticket.pk 'resolve' %}" class="action-form">{% csrf_token %}
+                <label class="form-label small fw-semibold" for="resolution">Resolution summary</label>
+                <textarea id="resolution" name="resolution" class="form-control form-control-sm mb-2" rows="3" required placeholder="What was wrong and how did you fix it?"></textarea>
+                <button class="btn btn-success btn-sm w-100">Mark as resolved</button>
+              </form>
+            </div>
+          {% endif %}
+
+          {% if 'hold' in actions %}
+            <button class="btn btn-light-subtle" type="button" data-bs-toggle="collapse" data-bs-target="#holdBox" aria-expanded="false"><i class="bi bi-pause-circle"></i> Put on hold</button>
+            <div class="collapse" id="holdBox">
+              <form method="post" action="{% url 'ticket_action' ticket.pk 'hold' %}" class="action-form">{% csrf_token %}
+                <input name="reason" class="form-control form-control-sm mb-2" maxlength="200" placeholder="Reason (optional), e.g. waiting for parts">
+                <button class="btn btn-warning btn-sm w-100">Put on hold</button>
+              </form>
+            </div>
+          {% endif %}
+
+          {% if assign_form %}
+            <form method="post" action="{% url 'ticket_action' ticket.pk 'assign' %}" class="action-form">{% csrf_token %}
+              <label class="form-label small fw-semibold" for="{{ assign_form.agent.id_for_label }}">{% if ticket.assigned_to %}Reassign to{% else %}Assign to{% endif %}</label>
+              <div class="input-group input-group-sm">
+                {{ assign_form.agent }}
+                <button class="btn btn-outline-primary" type="submit"><i class="bi bi-person-check"></i></button>
+              </div>
+            </form>
+          {% endif %}
+
+          {% if 'release' in actions %}
+            <form method="post" action="{% url 'ticket_action' ticket.pk 'release' %}">{% csrf_token %}
+              <button class="btn btn-link btn-sm text-muted w-100"><i class="bi bi-box-arrow-left"></i> Release back to the queue</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+  </div>
+  {% endif %}
+
+  <!-- Details & history: after the conversation on phones, right column on desktop -->
+  <div class="tl-side">
+      <div class="card mb-4">
+        <div class="card-header"><span class="card-title"><i class="bi bi-info-circle text-primary"></i> Details</span></div>
+        <ul class="meta-list">
+          <li><span class="k">Requester</span><span class="v person">{% avatar ticket.created_by 'sm' %}{{ ticket.created_by|display_name }}</span></li>
+          <li><span class="k">Assignee</span><span class="v person">{% avatar ticket.assigned_to 'sm' %}{% if ticket.assigned_to %}{{ ticket.assigned_to|display_name }}{% else %}<span class="text-muted">Unassigned</span>{% endif %}</span></li>
+          <li><span class="k">Status</span><span class="v">{% status_chip ticket %}</span></li>
+          <li><span class="k">Priority</span><span class="v">{% priority_chip ticket %}</span></li>
+          <li><span class="k">Category</span><span class="v">{{ ticket.category|default:"—" }}</span></li>
+          <li><span class="k">Due date</span><span class="v {% if ticket.is_overdue %}text-danger{% endif %}">{% if ticket.due_date %}{{ ticket.due_date|date:"d M Y" }}{% if ticket.due_hint %} <span class="small {% if ticket.is_overdue %}text-danger{% else %}text-muted{% endif %}">({{ ticket.due_hint }})</span>{% endif %}{% else %}—{% endif %}</span></li>
+          <li><span class="k">Reward</span><span class="v">{% if ticket.reward %}<i class="bi bi-coin text-warning"></i> {{ ticket.reward }} coins{% else %}—{% endif %}</span></li>
+          <li><span class="k">Created</span><span class="v">{{ ticket.created_at|date:"d M Y, H:i" }}</span></li>
+          {% if ticket.resolved_at %}<li><span class="k">Resolved</span><span class="v">{{ ticket.resolved_at|date:"d M Y, H:i" }}</span></li>{% endif %}
+          {% if ticket.closed_at %}<li><span class="k">Closed</span><span class="v">{{ ticket.closed_at|date:"d M Y, H:i" }}</span></li>{% endif %}
+        </ul>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><span class="card-title"><i class="bi bi-clock-history text-primary"></i> History</span><span class="small text-muted fw-normal">{{ activities|length }} event{{ activities|length|pluralize }}</span></div>
+        <div class="card-body" style="max-height: 360px; overflow-y: auto">
+          <ul class="timeline">
+            {% for a in activities %}
+              <li><span class="dot"></span>{{ a.message }}
+                <div class="when">{{ a.actor|display_name }} · <span title="{{ a.created_at }}">{{ a.created_at|naturaltime }}</span></div>
+              </li>
+            {% empty %}
+              <li class="text-muted">No history yet.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+  </div>
+</div>
+{% endblock %}

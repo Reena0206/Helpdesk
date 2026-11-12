@@ -1,0 +1,16 @@
+{% load helpdesk humanize %}
+{% with k=a.message|activity_kind %}
+<li class="feed-item">
+  <span class="feed-icon tone-{{ k.tone }}" title="{{ k.label }}"><i class="bi {{ k.icon }}"></i></span>
+  <div class="feed-body">
+    <div class="feed-text"><strong>{{ a.actor|display_name }}</strong> <span class="feed-msg">{{ a.message }}</span></div>
+    <div class="feed-meta">
+      <a href="{% url 'ticket_detail' a.ticket_id %}" class="ticket-num text-primary">{{ a.ticket.number }}</a>
+      {% if not compact %}<span class="text-truncate">{{ a.ticket.title }}</span>{% endif %}
+      <span class="dot-sep"></span>
+      {% if compact %}<span title="{{ a.created_at }}">{{ a.created_at|naturaltime }}</span>{% else %}<span title="{{ a.created_at|naturaltime }}">{{ a.created_at|date:"H:i" }}</span>{% endif %}
+    </div>
+  </div>
+  {% if not compact %}<span class="chip tone-chip tone-{{ k.tone }} d-none d-md-inline-flex">{{ k.label }}</span>{% endif %}
+</li>
+{% endwith %}

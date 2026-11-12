@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% load helpdesk %}
+{% block title %}Edit profile{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'profile' %}">Profile</a></li>
+  <li class="breadcrumb-item active">Edit</li>
+</ol></nav>
+<div class="page-header"><div><h1>Edit profile</h1><p class="subtitle">Keep your contact details up to date so the support team can reach you.</p></div></div>
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="card mb-4">
+        <div class="card-header"><span class="card-title"><i class="bi bi-person text-primary"></i> Personal information</span></div>
+        <div class="card-body"><div class="row g-3">
+          {% include 'partials/field.html' with field=user_form.first_name col='col-md-6' %}
+          {% include 'partials/field.html' with field=user_form.last_name col='col-md-6' %}
+          {% include 'partials/field.html' with field=user_form.email col='col-12' %}
+        </div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title"><i class="bi bi-building text-primary"></i> Work &amp; contact</span></div>
+        <div class="card-body"><div class="row g-3">
+          {% include 'partials/field.html' with field=profile_form.phone col='col-md-6' %}
+          {% include 'partials/field.html' with field=profile_form.department col='col-md-6' %}
+          {% include 'partials/field.html' with field=profile_form.address col='col-12' %}
+          {% include 'partials/field.html' with field=profile_form.city col='col-md-6' %}
+          {% include 'partials/field.html' with field=profile_form.state col='col-md-6' %}
+        </div></div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card mb-3">
+        <div class="card-body d-flex align-items-center gap-3">
+          {% avatar user 'lg' %}
+          <div><div class="fw-semibold">@{{ user.username }}</div><div class="small text-muted">Your username can't be changed.</div></div>
+        </div>
+      </div>
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary py-2"><i class="bi bi-check-lg"></i> Save changes</button>
+        <a href="{% url 'profile' %}" class="btn btn-light-subtle">Cancel</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}

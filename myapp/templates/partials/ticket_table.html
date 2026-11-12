@@ -1,0 +1,88 @@
+{% load helpdesk humanize %}
+{% if tickets %}
+  {% if not compact %}
+  <!-- Wide screens (≥1200px) -->
+  <div class="table-responsive d-none d-xl-block">
+    <table class="table table-hover table-tickets align-middle">
+      <thead>
+        <tr>
+          <th>Ticket</th>
+          <th>Status</th>
+          <th>Priority</th>
+          <th class="d-none d-xxl-table-cell">Requester</th>
+          <th>Assignee</th>
+          <th>Due</th>
+          <th class="text-end">Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tickets %}
+          <tr data-href="{% url 'ticket_detail' t.pk %}" class="prio-{{ t.priority }}">
+            <td class="ticket-cell">
+              <a class="ticket-title" href="{% url 'ticket_detail' t.pk %}">{{ t.title }}</a>
+              <div class="ticket-meta d-flex flex-wrap align-items-center gap-2 mt-1">
+                <span class="ticket-num">{{ t.number }}</span>
+                {% if t.category %}<span><i class="bi bi-tag"></i> {{ t.category }}</span>{% endif %}
+                {% if t.reward %}<span class="chip chip-coin py-0"><i class="bi bi-coin"></i>{{ t.reward }}</span>{% endif %}
+              </div>
+            </td>
+            <td>{% status_chip t %}</td>
+            <td>{% priority_chip t %}</td>
+              <td class="d-none d-xxl-table-cell"><span class="person">{% avatar t.created_by 'sm' %}<span class="person-name small">{{ t.created_by|display_name }}</span></span></td>
+            <td>
+              {% if t.assigned_to %}
+                <span class="person">{% avatar t.assigned_to 'sm' %}<span class="person-name small">{{ t.assigned_to|display_name }}</span></span>
+              {% else %}
+                <span class="person">{% avatar None 'sm' %}<span class="small text-muted">Unassigned</span></span>
+              {% endif %}
+            </td>
+            <td class="small text-nowrap">
+              {% if t.due_date %}
+                {% if t.is_overdue %}<span class="chip chip-overdue"><i class="bi bi-alarm"></i>{{ t.due_date|date:"d M" }}</span>
+                {% else %}<i class="bi bi-calendar3 text-muted"></i> {{ t.due_date|date:"d M Y" }}{% endif %}
+              {% else %}<span class="text-muted">—</span>{% endif %}
+            </td>
+            <td class="text-end small text-muted text-nowrap" title="{{ t.updated_at }}">{{ t.updated_at|naturaltime }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <!-- Cards: below 1200px, and always for compact lists (dashboard) -->
+  <div class="{% if not compact %}d-xl-none{% endif %}">
+    {% for t in tickets %}
+      <a class="ticket-card prio-{{ t.priority }}" href="{% url 'ticket_detail' t.pk %}">
+        <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+          <span class="fw-semibold ticket-card-title">{{ t.title }}</span>
+          {% status_chip t %}
+        </div>
+        <div class="ticket-meta d-flex flex-wrap align-items-center gap-2">
+          <span class="ticket-num">{{ t.number }}</span>
+          {% priority_chip t %}
+          {% if t.category %}<span class="d-none d-sm-inline"><i class="bi bi-tag"></i> {{ t.category }}</span>{% endif %}
+          {% if t.reward %}<span class="chip chip-coin py-0"><i class="bi bi-coin"></i>{{ t.reward }}</span>{% endif %}
+        </div>
+        <div class="ticket-meta d-flex flex-wrap align-items-center gap-2 mt-2">
+          {% if t.assigned_to %}
+            <span class="person">{% avatar t.assigned_to 'sm' %}<span class="person-name">{{ t.assigned_to|display_name }}</span></span>
+          {% else %}
+            <span class="person">{% avatar None 'sm' %}<span>Unassigned</span></span>
+          {% endif %}
+          {% if t.due_date %}
+            {% if t.is_overdue %}<span class="chip chip-overdue py-0"><i class="bi bi-alarm"></i>Due {{ t.due_date|date:"d M" }}</span>
+            {% else %}<span><i class="bi bi-calendar3"></i> Due {{ t.due_date|date:"d M" }}</span>{% endif %}
+          {% endif %}
+          <span class="ms-auto text-nowrap">{{ t.updated_at|naturaltime }}</span>
+        </div>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="empty-state">
+    <div class="icon"><i class="bi {{ empty_icon|default:'bi-inbox' }}"></i></div>
+    <h3>{{ empty_title|default:"No tickets here" }}</h3>
+    <p class="small mb-0">{{ empty_text|default:"Nothing matches right now." }}</p>
+  </div>
+{% endif %}

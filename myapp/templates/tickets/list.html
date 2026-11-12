@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block title %}Tickets{% endblock %}
+{% block content %}
+{% with scope=request.GET.scope %}
+<div class="page-header">
+  <div>
+    <h1>
+      {% if assignee %}{{ assignee.get_full_name|default:assignee.username }}'s tickets{% elif scope == 'assigned' %}My queue{% elif scope == 'unassigned' %}Unassigned tickets{% elif scope == 'overdue' %}Overdue tickets{% elif scope == 'mine' or not is_staff_member %}Tickets raised by me{% else %}All tickets{% endif %}
+    </h1>
+    <p class="subtitle">
+      {% if scope == 'unassigned' %}Tickets waiting for an agent. Open one and click <em>Take this ticket</em>.
+      {% elif scope == 'overdue' %}Active tickets that are past their due date.
+      {% elif scope == 'assigned' %}Tickets currently assigned to you.
+      {% else %}{{ page.paginator.count }} ticket{{ page.paginator.count|pluralize }} match{{ page.paginator.count|pluralize:"es," }} your filters.{% endif %}
+    </p>
+  </div>
+  <a href="{% url 'ticket_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Raise a ticket</a>
+</div>
+
+<!-- Status tabs -->
+<div class="status-tabs mb-3">
+  {% for tab in tabs %}
+    <a href="?{% if base_qs %}{{ base_qs }}&{% endif %}status={{ tab.key }}" class="{% if tab.key == current_status %}active{% endif %}">
+      {% if tab.key and tab.key != 'active' %}<span class="chip-dot chip-status-{{ tab.key }}" style="color: var(--c)"></span>{% endif %}
+      {{ tab.label }} <span class="count">{{ tab.count }}</span>
+    </a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <!-- Filter bar -->
+  <form method="get" class="card-header flex-wrap gap-2">
+    {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
+    {% if assignee %}<input type="hidden" name="assignee" value="{{ assignee.pk }}">{% endif %}
+    <div class="topbar-search flex-grow-1" style="min-width: 220px; max-width: none">
+      <i class="bi bi-search"></i>
+      <input type="search" name="q" value="{{ form.q.value|default:'' }}" class="form-control" placeholder="Search number, title or description…">
+    </div>
+    <div class="d-flex flex-wrap gap-2 filter-controls">
+      {{ form.scope }}
+      {{ form.priority }}
+      {{ form.category }}
+      {{ form.sort }}
+      <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Apply</button>
+      {% if has_filters or current_status %}<a href="{% url 'ticket_list' %}" class="btn btn-light-subtle" title="Clear all filters"><i class="bi bi-x-lg"></i> Clear</a>{% endif %}
+    </div>
+  </form>
+
+  {% include 'partials/ticket_table.html' with tickets=page.object_list empty_icon='bi-search' empty_title='No tickets found' empty_text='Try changing the filters or search terms.' %}
+</div>
+{% include 'partials/pagination.html' %}
+{% endwith %}
+{% endblock %}
+
+{% block extra_head %}
+<style>
+  .status-tabs .chip-dot { display: inline-block; }
+</style>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load helpdesk humanize %}
+{% block title %}Team{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Team</h1>
+    <p class="subtitle">Workload right now, and performance for <strong class="text-body">{{ period_label|lower }}</strong>.</p>
+  </div>
+  {% if is_admin_user %}<a href="{% url 'user_list' %}" class="btn btn-light-subtle"><i class="bi bi-person-gear"></i> Manage roles</a>{% endif %}
+</div>
+
+<!-- Summary -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4 col-xxl-2"><div class="card h-100"><div class="stat">
+    <span class="stat-icon tone-primary"><i class="bi bi-people"></i></span>
+    <div><div class="stat-label">Agents</div><div class="stat-value">{{ summary.agents }}</div></div>
+  </div></div></div>
+  <div class="col-6 col-md-4 col-xxl-2"><div class="card h-100"><div class="stat">
+    <span class="stat-icon tone-violet"><i class="bi bi-lightning-charge"></i></span>
+    <div><div class="stat-label">Assigned &amp; active</div><div class="stat-value">{{ summary.active }}</div></div>
+  </div></div></div>
+  <div class="col-6 col-md-4 col-xxl-2"><a class="stat-link" href="{% url 'ticket_list' %}?scope=unassigned"><div class="card h-100"><div class="stat">
+    <span class="stat-icon tone-warning"><i class="bi bi-inbox"></i></span>
+    <div><div class="stat-label">Unassigned</div><div class="stat-value">{{ summary.unassigned }}</div></div>
+  </div></div></a></div>
+  <div class="col-6 col-md-4 col-xxl-2"><a class="stat-link" href="{% url 'ticket_list' %}?scope=overdue"><div class="card h-100"><div class="stat">
+    <span class="stat-icon tone-danger"><i class="bi bi-alarm"></i></span>
+    <div><div class="stat-label">Overdue (assigned)</div><div class="stat-value {% if summary.overdue %}text-danger{% endif %}">{{ summary.overdue }}</div></div>
+  </div></div></a></div>
+  <div class="col-6 col-md-4 col-xxl-2"><div class="card h-100"><div class="stat">
+    <span class="stat-icon tone-success"><i class="bi bi-check2-circle"></i></span>
+    <div><div class="stat-label">Resolved</div><div class="stat-value">{{ summary.resolved }}</div></div>
+  </div></div></div>
+  <div class="col-6 col-md-4 col-xxl-2"><div class="card h-100"><div class="stat">
+    <span class="stat-icon tone-info"><i class="bi bi-stopwatch"></i></span>
+    <div><div class="stat-label">Avg. resolution</div><div class="stat-value">{{ summary.avg_resolution|short_duration }}</div></div>
+  </div></div></div>
+</div>
+
+<div class="card">
+  <form method="get" class="card-header flex-wrap gap-2">
+    <div class="topbar-search flex-grow-1" style="min-width: 220px; max-width: none">
+      <i class="bi bi-search"></i>
+      <input type="search" name="q" value="{{ q }}" class="form-control" placeholder="Search name, email or department…" aria-label="Search agents">
+    </div>
+    <div class="d-flex flex-wrap gap-2 filter-controls">
+      <select name="period" class="form-select" aria-label="Period">
+        {% for value, label in periods %}<option value="{{ value }}" {% if value == period %}selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      <select name="sort" class="form-select" aria-label="Sort by">
+        {% for value, label in sorts %}<option value="{{ value }}" {% if value == sort %}selected{% endif %}>Sort: {{ label }}</option>{% endfor %}
+      </select>
+      <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Apply</button>
+    </div>
+  </form>
+
+  {% if agents %}
+    <!-- Desktop -->
+    <div class="table-responsive d-none d-xl-block">
+      <table class="table table-hover table-tickets align-middle team-table">
+        <thead>
+          <tr>
+            <th>Agent</th>
+            <th>Workload now</th>
+            <th class="text-end">Resolved</th>
+            <th>Rating</th>
+            <th class="text-end">Coins</th>
+            <th class="p-0"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in agents %}
+            <tr data-href="{% url 'ticket_list' %}?assignee={{ a.pk }}&status=active" title="Open {{ a|display_name }}'s active tickets">
+              <td>
+                <div class="person">{% avatar a %}
+                  <div class="lh-sm" style="min-width: 0">
+                    <div class="fw-semibold person-name">{{ a|display_name }}{% if a == user %} <span class="text-muted fw-normal small">(you)</span>{% endif %}</div>
+                    <div class="small text-muted person-name">{{ a.profile.get_role_display }}{% if a.profile.department %} · {{ a.profile.department }}{% endif %}</div>
+                    <div class="text-muted person-name" style="font-size: var(--fs-2xs)"><i class="bi bi-clock-history"></i> {% if a.last_active %}Active {{ a.last_active|naturaltime }}{% else %}No activity yet{% endif %}</div>
+                  </div>
+                </div>
+              </td>
+              <td style="min-width: 190px">
+                <div class="d-flex flex-wrap align-items-center gap-1 mb-1">
+                  <strong class="fs-6 me-1">{{ a.active_n }}</strong><span class="small text-muted me-1">active</span>
+                  {% if a.on_hold_n %}<span class="chip chip-status-on_hold py-0">{{ a.on_hold_n }} on hold</span>{% endif %}
+                  {% if a.overdue_n %}<span class="chip chip-overdue py-0">{{ a.overdue_n }} overdue</span>{% endif %}
+                  {% if a.urgent_n %}<span class="chip chip-prio-urgent py-0">{{ a.urgent_n }} urgent</span>{% endif %}
+                </div>
+                <div class="load-bar"><span style="width: {{ a.load_pct }}%"></span></div>
+              </td>
+              <td class="text-end text-nowrap">
+                <div class="fw-semibold">{{ a.resolved_n }}</div>
+                <div class="small text-muted" title="Average time from raised to resolved">{% if a.avg_resolution %}avg {{ a.avg_resolution|short_duration }}{% else %}—{% endif %}</div>
+              </td>
+              <td class="text-nowrap">
+                {% if a.rating_n %}<div><strong>{{ a.rating_avg|floatformat:1 }}</strong> {{ a.rating_avg|floatformat:0|stars }}</div><div class="small text-muted">{{ a.rating_n }} rating{{ a.rating_n|pluralize }}</div>{% else %}<span class="text-muted">—</span>{% endif %}
+              </td>
+              <td class="text-end text-nowrap">{% if a.coins_earned %}<i class="bi bi-coin text-warning"></i> {{ a.coins_earned|intcomma }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
+              <td class="text-end pe-3"><i class="bi bi-chevron-right text-muted"></i></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Below 1200px: one card per agent -->
+    <div class="d-xl-none">
+      {% for a in agents %}
+        <div class="agent-card">
+          <div class="d-flex align-items-center gap-2 mb-3">
+            {% avatar a %}
+            <div class="flex-grow-1 lh-sm" style="min-width: 0">
+              <div class="fw-semibold text-truncate">{{ a|display_name }}{% if a == user %} <span class="text-muted fw-normal small">(you)</span>{% endif %}</div>
+              <div class="small text-muted text-truncate">{{ a.profile.get_role_display }}{% if a.profile.department %} · {{ a.profile.department }}{% endif %}</div>
+            </div>
+            <a href="{% url 'ticket_list' %}?assignee={{ a.pk }}&status=active" class="btn btn-sm btn-light-subtle">Tickets</a>
+          </div>
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <strong>{{ a.active_n }}</strong><span class="small text-muted">active</span>
+            {% if a.on_hold_n %}<span class="chip chip-status-on_hold py-0">{{ a.on_hold_n }} on hold</span>{% endif %}
+            {% if a.overdue_n %}<span class="chip chip-overdue py-0">{{ a.overdue_n }} overdue</span>{% endif %}
+            {% if a.urgent_n %}<span class="chip chip-prio-urgent py-0">{{ a.urgent_n }} urgent</span>{% endif %}
+          </div>
+          <div class="load-bar mb-3"><span style="width: {{ a.load_pct }}%"></span></div>
+          <div class="agent-metrics">
+            <div><span>Resolved</span><strong>{{ a.resolved_n }}</strong></div>
+            <div><span>Avg. time</span><strong>{{ a.avg_resolution|short_duration }}</strong></div>
+            <div><span>Rating</span><strong>{% if a.rating_n %}{{ a.rating_avg|floatformat:1 }} <i class="bi bi-star-fill text-warning small"></i>{% else %}—{% endif %}</strong></div>
+            <div><span>Coins</span><strong>{{ a.coins_earned|default:"—" }}</strong></div>
+          </div>
+          <div class="small text-muted mt-2"><i class="bi bi-clock-history"></i> Last active {% if a.last_active %}{{ a.last_active|naturaltime }}{% else %}never{% endif %}</div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state">
+      <div class="icon"><i class="bi bi-people"></i></div>
+      <h3>No agents found</h3>
+      <p class="small mb-0">{% if q %}Try a different search.{% else %}Give someone the Support Agent role to see them here.{% endif %}</p>
+    </div>
+  {% endif %}
+</div>
+
+<p class="small text-muted mt-3 mb-0">
+  <i class="bi bi-info-circle"></i>
+  <strong>Workload</strong> counts the tickets assigned right now.
+  <strong>Resolved</strong>, <strong>avg. resolution</strong> (time from raised to resolved), <strong>rating</strong> and <strong>coins earned</strong> cover {{ period_label|lower }}.
+  {% if summary.rating %}Team rating for this period: <strong>{{ summary.rating|floatformat:1 }}/5</strong> from {{ summary.rating_n }} rating{{ summary.rating_n|pluralize }}.{% endif %}
+</p>
+{% endblock %}

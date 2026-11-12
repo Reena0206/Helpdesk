@@ -1,38 +1,54 @@
 from django.contrib import admin
-from .models import UserProfile, TaskDetail, my_cart, Account, transaction,user_comment
-# Register your models here.
 
-#UserProfile Admin
+from .models import Account, Category, Ticket, TicketActivity, TicketComment, Transaction, UserProfile
+
+
+@admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ['Address','City','State']
+    list_display = ['user', 'role', 'department', 'phone', 'city', 'state']
+    list_filter = ['role']
+    search_fields = ['user__username', 'user__email', 'user__first_name', 'user__last_name']
 
-admin.site.register(UserProfile,UserProfileAdmin)
 
-#Task Details
-class TaskDetailsAdmin(admin.ModelAdmin):
-    list_display = ['id','task_title','task_created_by','task_closed_by','task_created_on','task_closed_on','task_description','task_due_date','task_reward','task_holder','task_status']
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ['name', 'description']
+    search_fields = ['name']
 
-admin.site.register(TaskDetail,TaskDetailsAdmin)
 
-#my_cart Details
-class my_cartAdmin(admin.ModelAdmin):
-    list_display = ['id','user','task','task_count']
+class TicketCommentInline(admin.TabularInline):
+    model = TicketComment
+    extra = 0
+    fields = ['author', 'body', 'is_internal', 'attachment', 'created_at']
+    readonly_fields = ['created_at']
 
-admin.site.register(my_cart,my_cartAdmin)
 
-#Account Admin
+class TicketActivityInline(admin.TabularInline):
+    model = TicketActivity
+    extra = 0
+    fields = ['actor', 'message', 'created_at']
+    readonly_fields = ['actor', 'message', 'created_at']
+    can_delete = False
+
+
+@admin.register(Ticket)
+class TicketAdmin(admin.ModelAdmin):
+    list_display = ['number', 'title', 'status', 'priority', 'category', 'created_by', 'assigned_to',
+                    'due_date', 'reward', 'rating', 'created_at']
+    list_filter = ['status', 'priority', 'category']
+    search_fields = ['title', 'description', 'created_by__username', 'assigned_to__username']
+    readonly_fields = ['created_at', 'updated_at', 'resolved_at', 'closed_at']
+    inlines = [TicketCommentInline, TicketActivityInline]
+    date_hierarchy = 'created_at'
+
+
+@admin.register(Account)
 class AccountAdmin(admin.ModelAdmin):
-    list_display = ['id','account_holder','account_balance']
+    list_display = ['user', 'balance']
+    search_fields = ['user__username']
 
-admin.site.register(Account,AccountAdmin)
 
-
-#Transaction Admin
-class transactionAdmin(admin.ModelAdmin):
-    list_display = ['id','sender','receiver','amount','timestamp']
-admin.site.register(transaction,transactionAdmin)
-
-#User_comment
-class user_commentAdmin(admin.ModelAdmin):
-    list_display = ['id','user','task','reopen_comment','closing_comment','textfile']
-admin.site.register(user_comment,user_commentAdmin)
+@admin.register(Transaction)
+class TransactionAdmin(admin.ModelAdmin):
+    list_display = ['id', 'kind', 'sender', 'receiver', 'amount', 'ticket', 'note', 'created_at']
+    list_filter = ['kind']

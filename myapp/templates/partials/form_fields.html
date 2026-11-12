@@ -1,0 +1,9 @@
+{% for field in form.hidden_fields %}{{ field }}{% endfor %}
+{% if form.non_field_errors %}
+  <div class="alert alert-danger py-2 small d-flex gap-2"><i class="bi bi-exclamation-circle-fill"></i><div>{% for e in form.non_field_errors %}{{ e }}<br>{% endfor %}</div></div>
+{% endif %}
+<div class="row g-3 mb-3">
+  {% for field in form.visible_fields %}
+    {% include 'partials/field.html' with field=field col='col-12' %}
+  {% endfor %}
+</div>

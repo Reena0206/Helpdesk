@@ -1,0 +1,73 @@
+{% load helpdesk humanize %}
+{% with url_name=request.resolver_match.url_name scope=request.GET.scope status=request.GET.status %}
+<aside class="sidebar offcanvas-lg offcanvas-start" tabindex="-1" id="sidebar" aria-label="Main navigation">
+  <div class="d-flex align-items-center justify-content-between">
+    <a href="{% url 'dashboard' %}" class="brand">
+      <span class="brand-mark"><i class="bi bi-life-preserver"></i></span> HelpDesk
+    </a>
+    <button type="button" class="btn-close d-lg-none me-3" data-bs-dismiss="offcanvas" data-bs-target="#sidebar" aria-label="Close"></button>
+  </div>
+
+  <div class="offcanvas-body flex-column p-0">
+    <nav class="nav flex-column">
+      <div class="nav-section">Overview</div>
+      <a class="nav-link {% if url_name == 'dashboard' %}active{% endif %}" href="{% url 'dashboard' %}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+      <a class="nav-link {% if url_name == 'ticket_create' %}active{% endif %}" href="{% url 'ticket_create' %}"><i class="bi bi-plus-circle"></i> Raise a ticket</a>
+
+      <div class="nav-section">Tickets</div>
+      {% if is_staff_member %}
+        <a class="nav-link {% if url_name == 'ticket_list' and scope == 'assigned' %}active{% endif %}" href="{% url 'ticket_list' %}?scope=assigned&status=active">
+          <i class="bi bi-person-workspace"></i> My queue {% if nav_counts.queue %}<span class="nav-count">{{ nav_counts.queue }}</span>{% endif %}
+        </a>
+        <a class="nav-link {% if url_name == 'ticket_list' and scope == 'unassigned' %}active{% endif %}" href="{% url 'ticket_list' %}?scope=unassigned">
+          <i class="bi bi-inbox"></i> Unassigned {% if nav_counts.unassigned %}<span class="nav-count hot">{{ nav_counts.unassigned }}</span>{% endif %}
+        </a>
+        <a class="nav-link {% if url_name == 'ticket_list' and scope == 'overdue' %}active{% endif %}" href="{% url 'ticket_list' %}?scope=overdue">
+          <i class="bi bi-alarm"></i> Overdue {% if nav_counts.overdue %}<span class="nav-count">{{ nav_counts.overdue }}</span>{% endif %}
+        </a>
+        <a class="nav-link {% if url_name == 'ticket_list' and not scope %}active{% endif %}" href="{% url 'ticket_list' %}">
+          <i class="bi bi-collection"></i> All tickets
+        </a>
+      {% endif %}
+      <a class="nav-link {% if url_name == 'ticket_list' and scope == 'mine' and status != 'resolved' %}active{% endif %}" href="{% url 'ticket_list' %}?scope=mine">
+        <i class="bi bi-ticket-perforated"></i> Raised by me {% if nav_counts.my_active %}<span class="nav-count">{{ nav_counts.my_active }}</span>{% endif %}
+      </a>
+      {% if nav_counts.awaiting_me %}
+        <a class="nav-link {% if url_name == 'ticket_list' and scope == 'mine' and status == 'resolved' %}active{% endif %}" href="{% url 'ticket_list' %}?scope=mine&status=resolved">
+          <i class="bi bi-patch-check"></i> Awaiting my review <span class="nav-count hot">{{ nav_counts.awaiting_me }}</span>
+        </a>
+      {% endif %}
+
+      {% if is_staff_member %}
+        <a class="nav-link {% if url_name == 'team' %}active{% endif %}" href="{% url 'team' %}">
+          <i class="bi bi-people"></i> Team
+        </a>
+      {% endif %}
+      <a class="nav-link {% if url_name == 'activity_log' %}active{% endif %}" href="{% url 'activity_log' %}">
+        <i class="bi bi-activity"></i> Activity log
+      </a>
+
+      <div class="nav-section">Account</div>
+      <a class="nav-link {% if url_name == 'wallet' %}active{% endif %}" href="{% url 'wallet' %}"><i class="bi bi-wallet2"></i> Wallet</a>
+      <a class="nav-link {% if url_name == 'profile' or url_name == 'profile_edit' %}active{% endif %}" href="{% url 'profile' %}"><i class="bi bi-person"></i> Profile</a>
+
+      {% if is_admin_user %}
+        <div class="nav-section">Administration</div>
+        <a class="nav-link {% if url_name == 'user_list' %}active{% endif %}" href="{% url 'user_list' %}"><i class="bi bi-people"></i> Users &amp; roles</a>
+        <a class="nav-link {% if url_name == 'wallet_topup' %}active{% endif %}" href="{% url 'wallet_topup' %}"><i class="bi bi-coin"></i> Add coins</a>
+        {% if user.is_staff %}<a class="nav-link" href="{% url 'admin:index' %}"><i class="bi bi-sliders"></i> Django admin <i class="bi bi-box-arrow-up-right ms-auto small"></i></a>{% endif %}
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="{% url 'wallet' %}" class="wallet-mini">
+        <span class="coin"><i class="bi bi-coin"></i></span>
+        <span class="lh-sm">
+          <span class="label">Wallet balance</span>
+          <strong>{{ nav_wallet.balance|intcomma }} coins</strong>
+        </span>
+      </a>
+    </div>
+  </div>
+</aside>
+{% endwith %}

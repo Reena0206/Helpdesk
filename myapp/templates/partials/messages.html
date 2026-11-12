@@ -1,0 +1,13 @@
+{% if messages %}
+<div class="toast-stack" aria-live="polite">
+  {% for message in messages %}
+    {% with tag=message.tags|default:'info' %}
+    <div class="toast-msg {% if tag == 'danger' %}sticky tone-danger{% elif tag == 'success' %}tone-success{% elif tag == 'warning' %}tone-warning{% else %}tone-info{% endif %}" role="alert">
+      <i class="lead-icon bi {% if tag == 'danger' %}bi-x-octagon-fill{% elif tag == 'success' %}bi-check-circle-fill{% elif tag == 'warning' %}bi-exclamation-triangle-fill{% else %}bi-info-circle-fill{% endif %}"></i>
+      <div class="small fw-medium">{{ message }}</div>
+      <button type="button" class="btn-close" aria-label="Close"></button>
+    </div>
+    {% endwith %}
+  {% endfor %}
+</div>
+{% endif %}

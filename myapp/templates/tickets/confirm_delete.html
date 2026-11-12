@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% load helpdesk %}
+{% block title %}Delete {{ ticket.number }}{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8 col-lg-6">
+    <div class="card">
+      <div class="card-body p-4 text-center">
+        <div class="stat-icon tone-danger mx-auto mb-3"><i class="bi bi-trash3"></i></div>
+        <h1 class="h4">Delete this ticket?</h1>
+        <p class="text-muted">This will permanently delete the ticket along with its conversation and history. You can't undo this.</p>
+        <div class="border rounded-3 p-3 text-start mb-4" style="background: var(--hd-surface-2)">
+          <div class="ticket-num">{{ ticket.number }}</div>
+          <div class="fw-semibold">{{ ticket.title }}</div>
+          <div class="mt-2 d-flex gap-2">{% status_chip ticket %} {% priority_chip ticket %}</div>
+        </div>
+        <form method="post" class="d-flex gap-2 justify-content-center">
+          {% csrf_token %}
+          <a href="{% url 'ticket_detail' ticket.pk %}" class="btn btn-light-subtle">Cancel</a>
+          <button type="submit" class="btn btn-danger"><i class="bi bi-trash3"></i> Yes, delete it</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

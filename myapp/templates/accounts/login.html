@@ -1,0 +1,36 @@
+{% extends 'auth_base.html' %}
+{% block title %}Log in{% endblock %}
+{% block auth_content %}
+<h1 class="h3 mb-1">Welcome back</h1>
+<p class="text-muted mb-4">Log in to raise and track your support tickets.</p>
+
+<form method="post" novalidate>
+  {% csrf_token %}
+  {% include 'partials/form_fields.html' %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <div class="d-flex justify-content-end mb-3 mt-n2">
+    <a href="{% url 'password_reset' %}" class="small">Forgot password?</a>
+  </div>
+  <button type="submit" class="btn btn-primary w-100 py-2">Log in</button>
+</form>
+<p class="text-center text-muted small mt-4 mb-0">New here? <a href="{% url 'register' %}" class="fw-semibold">Create an account</a></p>
+
+{% if show_demo_accounts %}
+  <div class="card mt-4 demo-accounts">
+    <div class="card-header"><span class="card-title"><i class="bi bi-magic text-primary"></i> Try a demo account</span><span class="small text-muted fw-normal">click to fill in</span></div>
+    <div class="card-body p-2">
+      <div class="row g-2">
+        {% for u, name, role, pw in demo_accounts %}
+          <div class="col-6">
+            <button type="button" class="btn btn-light-subtle w-100 d-flex align-items-center gap-2 py-2" data-demo-user="{{ u }}" data-demo-pass="{{ pw }}">
+              <i class="bi {% if role == 'Admin' %}bi-shield-lock text-danger{% elif role == 'Agent' %}bi-headset text-primary{% else %}bi-person text-success{% endif %}"></i>
+              <span class="lh-sm"><span class="d-block small fw-semibold">{{ name }}</span><span class="d-block text-muted" style="font-size:.7rem">{{ role }} · {{ u }}</span></span>
+            </button>
+          </div>
+        {% endfor %}
+      </div>
+      <p class="small text-muted mb-1 mt-2 px-1">Run <code>python manage.py seed_demo</code> if these logins don't work.</p>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% load helpdesk humanize %}
+{% block title %}Wallet{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Wallet</h1><p class="subtitle">Offer coins as rewards on your tickets, or earn them by resolving tickets.</p></div></div>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="wallet-hero mb-4">
+      <div class="small opacity-75">Available balance</div>
+      <div class="amount"><i class="bi bi-coin"></i> {{ wallet.balance|intcomma }}</div>
+      <div class="small opacity-75">{{ user|display_name }}</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title"><i class="bi bi-question-circle text-primary"></i> How rewards work</span></div>
+      <div class="card-body small">
+        <div class="d-flex gap-3 mb-3"><span class="stat-icon tone-primary" style="width:36px;height:36px;font-size:1rem">1</span><div><strong>Offer a reward</strong><div class="text-muted">Add coins when raising a ticket to get it prioritised.</div></div></div>
+        <div class="d-flex gap-3 mb-3"><span class="stat-icon tone-violet" style="width:36px;height:36px;font-size:1rem">2</span><div><strong>An agent resolves it</strong><div class="text-muted">Your coins stay in your wallet until you're happy.</div></div></div>
+        <div class="d-flex gap-3"><span class="stat-icon tone-success" style="width:36px;height:36px;font-size:1rem">3</span><div><strong>You close the ticket</strong><div class="text-muted">The reward is paid to the agent automatically.</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header"><span class="card-title"><i class="bi bi-receipt text-primary"></i> Transaction history</span><span class="small text-muted fw-normal">{{ page.paginator.count }} total</span></div>
+      {% if page.object_list %}
+        <ul class="list-group list-group-flush">
+          {% for t in page.object_list %}
+            <li class="list-group-item d-flex align-items-center gap-3 px-3 py-3">
+              <span class="tx-icon {% if t.receiver == user %}tx-in{% else %}tx-out{% endif %}">
+                <i class="bi {% if t.kind == 'topup' %}bi-plus-lg{% elif t.receiver == user %}bi-arrow-down-left{% else %}bi-arrow-up-right{% endif %}"></i>
+              </span>
+              <div class="flex-grow-1" style="min-width:0">
+                <div class="fw-semibold small">
+                  {% if t.kind == 'topup' %}Coins added
+                  {% elif t.receiver == user %}Reward from {{ t.sender|display_name }}
+                  {% else %}Reward paid to {{ t.receiver|display_name }}{% endif %}
+                </div>
+                <div class="small text-muted text-truncate">
+                  {{ t.created_at|date:"d M Y, H:i" }}
+                  {% if t.ticket %} · <a href="{% url 'ticket_detail' t.ticket_id %}">{{ t.ticket.number }}</a>{% endif %}
+                  {% if t.note and t.kind == 'topup' %} · {{ t.note }}{% endif %}
+                </div>
+              </div>
+              <div class="fw-bold text-nowrap {% if t.receiver == user %}text-success{% else %}text-danger{% endif %}">
+                {% if t.receiver == user %}+{% else %}−{% endif %}{{ t.amount|intcomma }}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="empty-state"><div class="icon"><i class="bi bi-receipt"></i></div><h3>No transactions yet</h3><p class="small mb-0">Top-ups and rewards will appear here.</p></div>
+      {% endif %}
+    </div>
+    {% include 'partials/pagination.html' %}
+  </div>
+</div>
+{% endblock %}

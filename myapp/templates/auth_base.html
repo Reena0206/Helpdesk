@@ -1,0 +1,39 @@
+{% load static %}<!doctype html>
+<html lang="en" data-bs-theme="light">
+<head>
+  {% include 'partials/head.html' %}
+  <title>{% block title %}Welcome{% endblock %} · HelpDesk</title>
+</head>
+<body>
+  {% include 'partials/messages.html' %}
+  <div class="auth-shell">
+    <section class="auth-brand">
+      <div class="d-flex align-items-center gap-2 fw-bold fs-5 text-white mb-5">
+        <span class="brand-mark"><i class="bi bi-life-preserver"></i></span> HelpDesk
+      </div>
+      <div class="my-auto">
+        <h2 class="mb-3">Get help fast.<br>Track every issue to resolution.</h2>
+        <p class="mb-5 lead-text">One place to raise IT and workplace issues, talk with the support team, and confirm when things are fixed.</p>
+        <div class="feature"><i class="bi bi-lightning-charge"></i><div><strong>Raise a ticket in seconds</strong><span class="small">Pick a category, set a priority, attach a screenshot.</span></div></div>
+        <div class="feature"><i class="bi bi-chat-dots"></i><div><strong>Talk to the support team</strong><span class="small">Every reply and status change in one timeline.</span></div></div>
+        <div class="feature"><i class="bi bi-patch-check"></i><div><strong>You confirm the fix</strong><span class="small">Close with a rating, or reopen if it's not fixed.</span></div></div>
+      </div>
+      <div class="small mt-5 foot">&copy; HelpDesk · Ticket raising &amp; resolution platform</div>
+    </section>
+
+    <main class="auth-main">
+      <div class="auth-box {% block box_class %}{% endblock %}">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <a href="{% url 'login' %}" class="d-flex d-lg-none align-items-center gap-2 fw-bold fs-5 text-body"><span class="brand-mark"><i class="bi bi-life-preserver"></i></span> HelpDesk</a>
+          <button class="btn btn-light-subtle btn-icon ms-auto" type="button" data-theme-toggle aria-label="Toggle dark mode">
+            <i class="bi bi-moon-stars theme-icon-light"></i><i class="bi bi-sun theme-icon-dark"></i>
+          </button>
+        </div>
+        {% block auth_content %}{% endblock %}
+      </div>
+    </main>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+  <script src="{% static 'myapp/app.js' %}?v={{ asset_version }}"></script>
+</body>
+</html>

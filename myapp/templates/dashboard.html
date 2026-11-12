@@ -1,0 +1,268 @@
+{% extends 'base.html' %}
+{% load helpdesk humanize %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+{% now "G" as hour %}
+<section class="hero mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+    <div>
+      <div class="small fw-semibold text-uppercase mb-1" style="letter-spacing:.08em; color: rgba(255,255,255,.75)">{% now "l, j F" %}</div>
+      <h1 class="h2 mb-1">Good {% if hour|add:0 < 12 %}morning{% elif hour|add:0 < 17 %}afternoon{% else %}evening{% endif %}, {{ user.first_name|default:user.username }} 👋</h1>
+      <p class="mb-0">
+        {% if is_admin_user %}Here's how the helpdesk is doing today.
+        {% elif is_staff_member %}{% if my_queue_count %}You have {{ my_queue_count }} ticket{{ my_queue_count|pluralize }} in your queue.{% else %}Your queue is clear. Pick up an unassigned ticket?{% endif %}
+        {% else %}Need help with something? Raise a ticket and we'll take it from there.{% endif %}
+      </p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      {% if is_staff_member and unassigned_count %}
+        <a href="{% url 'ticket_list' %}?scope=unassigned" class="btn hero-stat text-white"><i class="bi bi-inbox"></i> {{ unassigned_count }} unassigned</a>
+      {% endif %}
+      <a href="{% url 'ticket_create' %}" class="btn btn-hero"><i class="bi bi-plus-lg"></i> Raise a ticket</a>
+    </div>
+  </div>
+</section>
+
+{% if awaiting_me %}
+  <div class="callout tone-success mb-4">
+    <span class="callout-icon"><i class="bi bi-patch-check"></i></span>
+    <div class="flex-grow-1">
+      <strong>{{ awaiting_me|length }} ticket{{ awaiting_me|length|pluralize }} resolved, waiting for your confirmation</strong>
+      <div class="small text-muted">Check the fix, then close the ticket with a rating, or reopen it.</div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      {% for t in awaiting_me %}<a href="{% url 'ticket_detail' t.pk %}" class="btn btn-sm btn-success">{{ t.number }}</a>{% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+<!-- KPI cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    <a class="stat-link" href="{% url 'ticket_list' %}?status=active"><div class="card"><div class="stat">
+      <span class="stat-icon tone-primary"><i class="bi bi-lightning-charge"></i></span>
+      <div><div class="stat-label">Active tickets</div><div class="stat-value">{{ active_count }}</div></div>
+    </div></div></a>
+  </div>
+  {% if is_staff_member %}
+    <div class="col-6 col-xl-3">
+      <a class="stat-link" href="{% url 'ticket_list' %}?scope=unassigned"><div class="card"><div class="stat">
+        <span class="stat-icon tone-warning"><i class="bi bi-inbox"></i></span>
+        <div><div class="stat-label">Unassigned</div><div class="stat-value">{{ unassigned_count }}</div></div>
+      </div></div></a>
+    </div>
+    <div class="col-6 col-xl-3">
+      <a class="stat-link" href="{% url 'ticket_list' %}?scope=assigned&status=active"><div class="card"><div class="stat">
+        <span class="stat-icon tone-violet"><i class="bi bi-person-workspace"></i></span>
+        <div><div class="stat-label">In my queue</div><div class="stat-value">{{ my_queue_count }}</div></div>
+      </div></div></a>
+    </div>
+  {% else %}
+    <div class="col-6 col-xl-3">
+      <a class="stat-link" href="{% url 'ticket_list' %}?scope=mine"><div class="card"><div class="stat">
+        <span class="stat-icon tone-success"><i class="bi bi-check2-all"></i></span>
+        <div><div class="stat-label">Resolved / closed</div><div class="stat-value">{{ resolved_count }}</div></div>
+      </div></div></a>
+    </div>
+    <div class="col-6 col-xl-3">
+      <a class="stat-link" href="{% url 'wallet' %}"><div class="card"><div class="stat">
+        <span class="stat-icon tone-warning"><i class="bi bi-coin"></i></span>
+        <div><div class="stat-label">Wallet</div><div class="stat-value">{{ wallet.balance|intcomma }}</div></div>
+      </div></div></a>
+    </div>
+  {% endif %}
+  <div class="col-6 col-xl-3">
+    <a class="stat-link" href="{% url 'ticket_list' %}?scope=overdue"><div class="card"><div class="stat">
+      <span class="stat-icon tone-danger"><i class="bi bi-alarm"></i></span>
+      <div><div class="stat-label">Overdue</div><div class="stat-value {% if overdue_count %}text-danger{% endif %}">{{ overdue_count }}</div></div>
+    </div></div></a>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="row g-4 mb-4">
+  <div class="col-xl-7">
+    <div class="card h-100" id="trendCard" data-url="{% url 'dashboard_trend' %}">
+      <div class="card-header flex-wrap">
+        <span class="card-title"><i class="bi bi-bar-chart-line"></i> Ticket trend</span>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+          <label for="trendRange" class="visually-hidden">Time range</label>
+          <select id="trendRange" class="form-select form-select-sm range-select">
+            {% for value, label in trend_ranges %}<option value="{{ value }}" {% if value == default_range %}selected{% endif %}>{{ label }}</option>{% endfor %}
+          </select>
+        </div>
+      </div>
+      <form id="trendCustom" class="trend-custom d-none" novalidate>
+        <div class="d-flex flex-wrap align-items-end gap-2">
+          <div><label class="form-label small mb-1" for="trendFrom">From</label><input type="date" id="trendFrom" class="form-control form-control-sm" max="{% now 'Y-m-d' %}"></div>
+          <div><label class="form-label small mb-1" for="trendTo">To</label><input type="date" id="trendTo" class="form-control form-control-sm" max="{% now 'Y-m-d' %}"></div>
+          <button type="submit" class="btn btn-primary btn-sm">Apply</button>
+          <span id="trendError" class="small text-danger"></span>
+        </div>
+      </form>
+      <div class="card-body">
+        <div class="trend-kpis mb-3">
+          <div class="trend-kpi">
+            <div class="kpi-label"><span class="swatch" style="background:#3b82f6"></span> Raised</div>
+            <div class="kpi-value"><span id="trendCreated">{{ trend.total_created }}</span><span class="delta" id="trendCreatedDelta"></span></div>
+          </div>
+          <div class="trend-kpi">
+            <div class="kpi-label"><span class="swatch" style="background:#12b76a"></span> Resolved</div>
+            <div class="kpi-value"><span id="trendResolved">{{ trend.total_resolved }}</span><span class="delta" id="trendResolvedDelta"></span></div>
+          </div>
+          <div class="trend-kpi">
+            <div class="kpi-label"><i class="bi bi-stack"></i> Backlog change</div>
+            <div class="kpi-value"><span id="trendNet"></span><span class="delta-note" id="trendNetNote"></span></div>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center small text-muted mb-2">
+          <span id="trendTitle" class="fw-semibold text-body">{{ trend.title }}</span>
+          <span>compared with the <span id="trendPrevLabel">{{ trend.prev_label }}</span></span>
+        </div>
+        <div class="position-relative chart-box">
+          <canvas id="trendChart" aria-label="Tickets raised and resolved over the selected period" role="img"></canvas>
+          <div id="trendEmpty" class="trend-empty {% if trend.total_created or trend.total_resolved %}d-none{% endif %}"><i class="bi bi-bar-chart"></i> No tickets raised or resolved in this period</div>
+          <div id="trendLoading" class="trend-empty d-none"><span class="spinner-border spinner-border-sm"></span> Loading…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-5">
+    <div class="card h-100">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-pie-chart"></i> Tickets by status</span>
+        <a href="{% url 'ticket_list' %}{% if not is_staff_member %}?scope=mine{% endif %}" class="small">Details <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="card-body status-body">
+        {% if total %}
+          <div class="donut">
+            <canvas id="statusChart" aria-label="Tickets by status" role="img"></canvas>
+            <div class="donut-center"><span>Total</span><strong>{{ total }}</strong><span>ticket{{ total|pluralize }}</span></div>
+          </div>
+          <div class="legend-grid">
+            {% for s in status_cards %}
+              <a href="{% url 'ticket_list' %}?status={{ s.key }}{% if not is_staff_member %}&scope=mine{% endif %}"
+                 class="legend-tile {% if not s.count %}is-zero{% endif %}" style="--c: {{ s.color }}"
+                 data-legend-index="{{ forloop.counter0 }}" title="{{ s.label }}: {{ s.count }} ({{ s.pct }}%)">
+                <span class="lt-name"><span class="sq"></span>{{ s.label }}</span>
+                <span class="lt-value"><strong>{{ s.count }}</strong><span>{{ s.pct }}%</span></span>
+                <span class="lt-bar"><span style="width: {{ s.pct }}%"></span></span>
+              </a>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="empty-state py-4 w-100"><div class="icon"><i class="bi bi-pie-chart"></i></div><p class="small mb-0">No tickets yet.</p></div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="{% if is_staff_member %}col-xl-8{% else %}col-12{% endif %}">
+    {% if is_staff_member %}
+      <div class="card mb-4">
+        <div class="card-header">
+          <span class="card-title"><i class="bi bi-person-workspace text-primary"></i> My queue</span>
+          <a href="{% url 'ticket_list' %}?scope=assigned&status=active" class="small">View all <i class="bi bi-arrow-right"></i></a>
+        </div>
+        {% include 'partials/ticket_table.html' with tickets=my_queue compact=True empty_icon='bi-cup-hot' empty_title='Your queue is empty' empty_text='Take a ticket from the Unassigned list to get started.' %}
+      </div>
+    {% endif %}
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-clock-history text-primary"></i> {% if is_staff_member %}Latest tickets{% else %}My recent tickets{% endif %}</span>
+        <a href="{% url 'ticket_list' %}{% if not is_staff_member %}?scope=mine{% endif %}" class="small">View all <i class="bi bi-arrow-right"></i></a>
+      </div>
+      {% include 'partials/ticket_table.html' with tickets=recent_tickets compact=True empty_icon='bi-ticket-perforated' empty_title='No tickets yet' empty_text='When you raise a ticket it will show up here.' %}
+    </div>
+  </div>
+
+  {% if is_staff_member %}
+  <div class="col-xl-4">
+    <div class="card mb-4">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-flag"></i> Active by priority</span>
+        <a href="{% url 'ticket_list' %}?status=active&sort=priority" class="small">View <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="card-body">
+        <div class="d-flex align-items-baseline gap-2 mb-2">
+          <span class="fs-3 fw-bold lh-1">{{ active_count }}</span><span class="text-muted small">active ticket{{ active_count|pluralize }}</span>
+        </div>
+        <div class="prio-stack mb-3" role="img" aria-label="Share of active tickets by priority">
+          {% for p in priority_counts %}{% if p.count %}<span class="chip-prio-{{ p.key }}" style="width: {{ p.pct }}%" title="{{ p.label }}: {{ p.count }} ({{ p.pct }}%)"></span>{% endif %}{% empty %}{% endfor %}
+          {% if not active_count %}<span class="empty"></span>{% endif %}
+        </div>
+        <div class="prio-list">
+          {% for p in priority_counts %}
+            <a href="{% url 'ticket_list' %}?status=active&priority={{ p.key }}" class="prio-item chip-prio-{{ p.key }}">
+              <span class="prio-icon"><i class="bi {% priority_icon p.key %}"></i></span>
+              <span class="flex-grow-1">
+                <span class="d-block fw-semibold text-body lh-sm">{{ p.label }}</span>
+                <span class="d-block small text-muted">{% if p.overdue %}<span class="text-danger">{{ p.overdue }} overdue</span>{% else %}{{ p.pct }}% of active{% endif %}</span>
+              </span>
+              <span class="prio-count">{{ p.count }}</span>
+              <i class="bi bi-chevron-right text-muted small"></i>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="card-footer csat">
+        <div>
+          <div class="small text-muted">Customer satisfaction</div>
+          {% if avg_rating %}<div class="small text-muted">from {{ rating_count }} rating{{ rating_count|pluralize }}</div>{% endif %}
+        </div>
+        {% if avg_rating %}
+          <div class="text-end"><span class="fs-4 fw-bold lh-1">{{ avg_rating|floatformat:1 }}</span><span class="text-muted small"> / 5</span><div>{{ avg_rating|floatformat:0|stars }}</div></div>
+        {% else %}
+          <span class="small text-muted">No ratings yet</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-people"></i> Team workload</span>
+        <a href="{% url 'team' %}" class="small">View all{% if agents_total > 4 %} ({{ agents_total }}){% endif %} <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <ul class="list-group list-group-flush">
+        {% for a in agents %}
+          <li class="list-group-item workload-row">
+            <a href="{% url 'ticket_list' %}?assignee={{ a.pk }}&status=active" class="d-flex align-items-center gap-2 mb-2 text-reset">
+              {% avatar a 'sm' %}
+              <span class="flex-grow-1 text-truncate"><span class="fw-semibold">{{ a|display_name }}</span>{% if a == user %} <span class="text-muted small">(you)</span>{% endif %}</span>
+              <span class="small text-muted text-nowrap"><strong class="text-body">{{ a.active_n }}</strong> active · {{ a.resolved_n }} resolved</span>
+            </a>
+            <div class="load-bar"><span style="width: {{ a.load_pct }}%"></span></div>
+          </li>
+        {% empty %}
+          <li class="list-group-item small text-muted">No agents yet.</li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title"><i class="bi bi-activity"></i> Recent activity</span>
+        <a href="{% url 'activity_log' %}" class="small">View all <i class="bi bi-arrow-right"></i></a>
+      </div>
+      <div class="card-body">
+        <ul class="feed">
+          {% for a in recent_activity %}
+            {% include 'partials/activity_item.html' with a=a compact=True %}
+          {% empty %}
+            <li class="text-muted small">No activity yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{{ status_chart|json_script:"status-chart-data" }}
+{{ trend|json_script:"trend-chart-data" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+{% endblock %}

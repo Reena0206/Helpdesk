@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load helpdesk humanize %}
+{% block title %}Activity log{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Activity log</h1>
+    <p class="subtitle">{% if is_staff_member %}Every change made to every ticket, newest first.{% else %}Everything that has happened on your tickets, newest first.{% endif %}</p>
+  </div>
+  {% if is_staff_member %}
+    <a href="?{% if query %}{{ query }}&{% endif %}export=csv" class="btn btn-light-subtle"><i class="bi bi-download"></i> Export CSV</a>
+  {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3"><div class="card"><div class="stat">
+    <span class="stat-icon tone-primary"><i class="bi bi-lightning-charge"></i></span>
+    <div><div class="stat-label">Events today</div><div class="stat-value">{{ stats.today }}</div></div>
+  </div></div></div>
+  <div class="col-6 col-xl-3"><div class="card"><div class="stat">
+    <span class="stat-icon tone-violet"><i class="bi bi-calendar-week"></i></span>
+    <div><div class="stat-label">Last 7 days</div><div class="stat-value">{{ stats.week }}</div></div>
+  </div></div></div>
+  <div class="col-6 col-xl-3"><div class="card"><div class="stat">
+    <span class="stat-icon tone-success"><i class="bi bi-check2-circle"></i></span>
+    <div><div class="stat-label">Resolved this week</div><div class="stat-value">{{ stats.resolved_week }}</div></div>
+  </div></div></div>
+  <div class="col-6 col-xl-3"><div class="card"><div class="stat">
+    <span class="stat-icon tone-slate"><i class="bi bi-lock"></i></span>
+    <div><div class="stat-label">Closed this week</div><div class="stat-value">{{ stats.closed_week }}</div></div>
+  </div></div></div>
+</div>
+
+<div class="card">
+  <form method="get" class="card-header flex-wrap gap-2" novalidate>
+    <div class="topbar-search flex-grow-1" style="min-width: 220px; max-width: none">
+      <i class="bi bi-search"></i>
+      {{ form.q }}
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2 filter-controls">
+      {{ form.kind }}
+      {% if form.actor %}{{ form.actor }}{% endif %}
+      <div class="d-flex align-items-center gap-1 date-range">
+        <label for="{{ form.date_from.id_for_label }}" class="small text-muted">From</label>{{ form.date_from }}
+        <label for="{{ form.date_to.id_for_label }}" class="small text-muted ms-1">To</label>{{ form.date_to }}
+      </div>
+      <button class="btn btn-primary" type="submit"><i class="bi bi-funnel"></i> Apply</button>
+      {% if has_filters %}<a href="{% url 'activity_log' %}" class="btn btn-light-subtle"><i class="bi bi-x-lg"></i> Clear</a>{% endif %}
+    </div>
+    {% if form.non_field_errors %}<div class="w-100 small text-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+  </form>
+
+  <div class="card-body pt-2">
+    {% if page.object_list %}
+      {% for a in page.object_list %}
+        {% ifchanged a.created_at|date:"Y-m-d" %}
+          {% if not forloop.first %}</ul>{% endif %}
+          <div class="day-heading">
+            <span>{{ a.created_at|naturalday:"l, d F Y"|capfirst }}</span>
+          </div>
+          <ul class="feed feed-log">
+        {% endifchanged %}
+        {% include 'partials/activity_item.html' with a=a %}
+        {% if forloop.last %}</ul>{% endif %}
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <div class="icon"><i class="bi bi-activity"></i></div>
+        <h3>No activity found</h3>
+        <p class="small mb-0">{% if has_filters %}Try changing the filters.{% else %}Changes to tickets will appear here.{% endif %}</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% include 'partials/pagination.html' %}
+{% endblock %}
+
+

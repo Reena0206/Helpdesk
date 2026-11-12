@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb">
+  <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Home</a></li>
+  <li class="breadcrumb-item"><a href="{% url 'ticket_list' %}">Tickets</a></li>
+  {% if ticket %}<li class="breadcrumb-item"><a href="{% url 'ticket_detail' ticket.pk %}">{{ ticket.number }}</a></li>{% endif %}
+  <li class="breadcrumb-item active">{% if ticket %}Edit{% else %}New{% endif %}</li>
+</ol></nav>
+<div class="page-header">
+  <div>
+    <h1>{{ title }}</h1>
+    <p class="subtitle">{% if ticket %}Update the details of this ticket.{% else %}Tell us what's wrong. The more detail you give, the faster we can help.{% endif %}</p>
+  </div>
+</div>
+
+<form method="post" enctype="multipart/form-data" novalidate>
+  {% csrf_token %}
+  {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header"><span class="card-title"><i class="bi bi-pencil-square text-primary"></i> Issue details</span></div>
+        <div class="card-body">
+          <div class="row g-3">
+            {% include 'partials/field.html' with field=form.title col='col-12' %}
+            {% include 'partials/field.html' with field=form.category col='col-md-6' %}
+            {% include 'partials/field.html' with field=form.priority col='col-md-6' %}
+            {% include 'partials/field.html' with field=form.description col='col-12' %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card mb-4">
+        <div class="card-header"><span class="card-title"><i class="bi bi-sliders text-primary"></i> Options</span></div>
+        <div class="card-body">
+          <div class="row g-3">
+            {% include 'partials/field.html' with field=form.due_date col='col-12' %}
+            {% if form.reward %}{% include 'partials/field.html' with field=form.reward col='col-12' %}{% endif %}
+            {% include 'partials/field.html' with field=form.attachment col='col-12' %}
+          </div>
+          {% if ticket and ticket.attachment %}
+            <a href="{{ ticket.attachment.url }}" target="_blank" class="attachment"><i class="bi bi-paperclip"></i> Current: {{ ticket.attachment_name }}</a>
+          {% endif %}
+          <div class="form-text mt-2">Max 5 MB. Images, PDF, text, Office documents or ZIP.</div>
+        </div>
+      </div>
+
+      {% if not ticket %}
+      <div class="card mb-4">
+        <div class="card-body small">
+          <div class="fw-semibold mb-2"><i class="bi bi-lightbulb text-warning"></i> Tips for a quick fix</div>
+          <ul class="mb-0 ps-3 text-muted">
+            <li>Say what you were doing when it happened.</li>
+            <li>Include the exact error message.</li>
+            <li>Attach a screenshot if you can.</li>
+            <li>Choose <em>Urgent</em> only if you can't work at all.</li>
+          </ul>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="d-grid gap-2">
+        <button type="submit" class="btn btn-primary py-2"><i class="bi {% if ticket %}bi-check-lg{% else %}bi-send{% endif %}"></i> {% if ticket %}Save changes{% else %}Submit ticket{% endif %}</button>
+        <a href="{% if ticket %}{% url 'ticket_detail' ticket.pk %}{% else %}{% url 'ticket_list' %}{% endif %}" class="btn btn-light-subtle">Cancel</a>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
